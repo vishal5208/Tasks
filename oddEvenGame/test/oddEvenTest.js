@@ -86,21 +86,17 @@ describe("OddEvenGame", function () {
 		const performTx = await oddEvenGame.performUpkeep("0x");
 		const perfromTxRec = await performTx.wait();
 
-		// console.log("something : ", perfromTxRec.logs[1].args[0].toString());
-
-		// Retrieve the requestID from the event
-		// const requestId = requestedEvent.args.requestId;
-		// console.log(requestId);
-
 		// call fulfillRandomWords
-		await vrfCoordinatorV2Mock.fulfillRandomWords(
+		const fullFillTx = await vrfCoordinatorV2Mock.fulfillRandomWords(
 			perfromTxRec.logs[1].args[0],
 			oddEvenGame.target
 		);
 
-    // get winners
-    const winners = await oddEvenGame.getWinnerAccounts()
+		await fullFillTx.wait();
 
+		const winners = await oddEvenGame.getWinners();
+		console.log(winners);
 
+		
 	});
 });

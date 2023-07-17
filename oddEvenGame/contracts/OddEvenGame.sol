@@ -123,6 +123,8 @@ contract OddEvenGame is VRFConsumerBaseV2, KeeperCompatibleInterface {
         return (upKeepNeeded, "0x0");
     }
 
+    address[] private winners;
+
     function distributeWinnings(bool bet) private {
         uint256 totalPot = address(this).balance;
         uint256 winnersCount = 0;
@@ -137,6 +139,9 @@ contract OddEvenGame is VRFConsumerBaseV2, KeeperCompatibleInterface {
 
         uint256 winningsPerWinner = totalPot / winnersCount;
 
+        winners = new address[](winnersCount);
+        uint256 winnerIndex = 0;
+
         for (uint256 i = 0; i < s_players.length; i++) {
             Player memory player = s_players[i];
 
@@ -148,13 +153,15 @@ contract OddEvenGame is VRFConsumerBaseV2, KeeperCompatibleInterface {
                 if (!success) {
                     revert OddEvenGame__TransferFailed();
                 }
+
+                winners[winnerIndex] = player.player;
+                winnerIndex++;
             }
         }
+    }
 
-        emit WinningAmountTranfered(winningsPerWinner);
-        // Emit event with winner accounts
-        address[] memory winners = getWinnerAccounts(bet);
-        emit WinnersDeclared(winners);
+    function getWinners() public view returns (address[] memory) {
+        return winners;
     }
 
     event WinnersDeclared(address[] winners);
@@ -164,7 +171,9 @@ contract OddEvenGame is VRFConsumerBaseV2, KeeperCompatibleInterface {
         uint256[] memory randomWords
     ) internal override {
         console.log("enterd the lottery");
+
         uint256 val = randomWords[0] % 2;
+
         if (val == 0) {
             distributeWinnings(false);
         } else {
@@ -175,30 +184,9 @@ contract OddEvenGame is VRFConsumerBaseV2, KeeperCompatibleInterface {
         delete s_players;
         s_lotteryState = OddEvenGameState.OPEN;
         s_lastTimeStamp = block.timestamp;
-    }
 
-    function getWinnerAccounts(
-        bool bet
-    ) public view returns (address[] memory) {
-        uint256 winnersCount = 0;
-        uint256[] memory winnerIndexes = new uint256[](s_players.length);
-
-        for (uint256 i = 0; i < s_players.length; i++) {
-            Player memory player = s_players[i];
-
-            if (player.bet == bet) {
-                winnerIndexes[winnersCount] = i;
-                winnersCount += 1;
-            }
-        }
-
-        address[] memory winners = new address[](winnersCount);
-
-        for (uint256 i = 0; i < winnersCount; i++) {
-            winners[i] = s_players[winnerIndexes[i]].player;
-        }
-
-        return winners;
+        // Emit event with winners
+        emit WinnersDeclared(winners);
     }
 
     /* View/Pure functions*/
