@@ -12,6 +12,7 @@ module.exports = {
 			},
 		},
 	},
+
 	networks: {
 		polygonMumbai: {
 			url: process.env.POLYGON_TESTNET_URL,
