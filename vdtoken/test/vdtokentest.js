@@ -80,4 +80,8 @@ describe("VDToken", function () {
 
 		console.log(feeCollectorBal.toString());
 	});
+
+	it.only("should add the liquidity ", async function () {
+		await vDToken.addLiquidity("10000000", ethers.formatEther("100"));
+	});
 });
