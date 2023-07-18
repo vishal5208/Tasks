@@ -14,7 +14,20 @@ contract NFTMinter is ERC721, Ownable {
     uint256 private currentPhase;
     mapping(uint256 => WhitelistPhase) private whitelistPhases;
 
-    constructor(uint256 startTime, uint256 endTime) ERC721("MyNFT", "NFT") {
+    // events
+    event NewPhaseAdded(
+        uint indexed phaseId,
+        uint indexed startTimeStamp,
+        uint indexed endTimeStamp
+    );
+
+    event UpdatedWhiteList(
+        uint indexed phaseId,
+        address indexed wallet,
+        bool isWhiteListed
+    );
+
+    constructor(uint256 startTime, uint256 endTime) ERC721("VishalD", "VD") {
         require(startTime > block.timestamp, "Add suitable start time");
         require(
             endTime == 0 || endTime >= startTime,
@@ -38,6 +51,7 @@ contract NFTMinter is ERC721, Ownable {
         _;
     }
 
+    // onyly owner can add new pahse
     function addPhase(uint256 startTime, uint256 endTime) public onlyOwner {
         require(startTime > block.timestamp, "Add suitable start time");
         require(
@@ -48,8 +62,11 @@ contract NFTMinter is ERC721, Ownable {
         currentPhase++;
         whitelistPhases[currentPhase].phaseStartTime = startTime;
         whitelistPhases[currentPhase].phaseEndTime = endTime;
+
+        emit NewPhaseAdded(currentPhase, startTime, endTime);
     }
 
+    // adding whitelisted addresses for the specific phase
     function updateWhitelistForPhase(
         address wallet,
         uint256 phaseId,
@@ -59,8 +76,10 @@ contract NFTMinter is ERC721, Ownable {
         require(wallet != address(0), "Invalid wallet address");
 
         whitelistPhases[phaseId].whitelist[wallet] = isWhitelisted;
+        emit UpdatedWhiteList(phaseId, wallet, isWhitelisted);
     }
 
+    // for te provided phase, check if the wallet is whitelisted or not
     function isWhitelistedForPhase(
         address wallet,
         uint256 phaseId
@@ -71,12 +90,14 @@ contract NFTMinter is ERC721, Ownable {
         return whitelistPhases[phaseId].whitelist[wallet];
     }
 
+    // for the ongoing phase, check if the wallet whitelisted or not
     function isWhitelistedForCurrentPhase(
         address wallet
     ) public view returns (bool) {
         return isWhitelistedForPhase(wallet, currentPhase);
     }
 
+    // check if the ongoing phase is active or not
     function isCurrentPhaseActive() public view returns (bool) {
         if (currentPhase == 0) {
             return false;
@@ -94,10 +115,33 @@ contract NFTMinter is ERC721, Ownable {
         return false;
     }
 
+    // for the ongoing phase, whitelisted members can mint the nft
     function mintNFT(
         address to,
         uint256 tokenId
     ) external onlyWhitelisted phaseIsActive {
         _safeMint(to, tokenId);
+    }
+
+    ///// getter functions
+
+    function getWhitelistPhases(
+        uint256 phaseId
+    ) public view returns (uint256, uint256) {
+        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        WhitelistPhase storage phase = whitelistPhases[phaseId];
+        return (phase.phaseStartTime, phase.phaseEndTime);
+    }
+
+    function getWhitelist(
+        address wallet,
+        uint256 phaseId
+    ) external view returns (bool) {
+        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        return whitelistPhases[phaseId].whitelist[wallet];
+    }
+
+    function getCurrentPhase() external view returns (uint256) {
+        return currentPhase;
     }
 }
