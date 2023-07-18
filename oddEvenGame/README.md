@@ -1,14 +1,18 @@
-# Sample Hardhat Project
+# Contract Deployment Details
 
-Contract Address :
-Mumbai : 0x4CD402132aD32a5fE83341fE18fc9FA9b9dDa46A
+## OddEvenGame
 
-Chainlink keeper :
+- **Contract Name:** OddEvenGame
+- **Blockchain Network:** Mumbai (Testnet)
+- **Contract Address:** [0x4CD402132aD32a5fE83341fE18fc9FA9b9dDa46A](https://mumbai.polygonscan.com/address/0x4CD402132aD32a5fE83341fE18fc9FA9b9dDa46A)
 
-https://automation.chain.link/mumbai/41200911867007180463222916183016995026228427707770633978896785403277284424509
+## Chainlink Keeper Integration
 
-Chainlink Vrf:
-https://vrf.chain.link/mumbai/5483
+- **Chainlink Keeper URL:** [https://automation.chain.link/mumbai/41200911867007180463222916183016995026228427707770633978896785403277284424509](https://automation.chain.link/mumbai/41200911867007180463222916183016995026228427707770633978896785403277284424509)
+
+## Chainlink VRF Integration
+
+- **Chainlink VRF URL:** [https://vrf.chain.link/mumbai/5483](https://vrf.chain.link/mumbai/5483)
 
 ```shell
 npx hardhat help

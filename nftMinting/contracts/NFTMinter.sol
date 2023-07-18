@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "hardhat/console.sol";
 
 contract NFTMinter is ERC721, Ownable {
@@ -48,18 +47,6 @@ contract NFTMinter is ERC721, Ownable {
         require(isCurrentPhaseActive(), "Phase is not currently active");
         _;
     }
-
-    // Chainlink Keeper functions
-    // function checkUpkeep(
-    //     bytes calldata /* checkData */
-    // ) external view override returns (bool, bytes memory) {
-    //     bool isPhaseUpdateNeeded = !isCurrentPhaseActive();
-    //     return (isPhaseUpdateNeeded, "0x0");
-    // }
-
-    // function performUpkeep(bytes calldata /* performData */) external override {
-    //     updateCurrentPhase();
-    // }
 
     // onyly owner can add new pahse
     function addPhase(uint256 startTime, uint256 endTime) public onlyOwner {
@@ -173,21 +160,4 @@ contract NFTMinter is ERC721, Ownable {
 
         return 0; // No active phase
     }
-
-    // // Internal function to update the current phase based on the timestamp
-    // function updateCurrentPhase() public {
-    //     uint256 currentTimestamp = block.timestamp;
-
-    //     for (uint256 i = 1; i <= currentPhase; i++) {
-    //         WhitelistPhase storage phase = whitelistPhases[i];
-    //         if (
-    //             currentTimestamp >= phase.phaseStartTime &&
-    //             (phase.phaseEndTime == 0 ||
-    //                 currentTimestamp <= phase.phaseEndTime)
-    //         ) {
-    //             currentPhase = i;
-    //             break;
-    //         }
-    //     }
-    // }
 }
