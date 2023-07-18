@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
+
 contract NFTMinter is ERC721, Ownable {
     struct WhitelistPhase {
         uint256 phaseStartTime;
@@ -11,8 +13,10 @@ contract NFTMinter is ERC721, Ownable {
         mapping(address => bool) whitelist;
     }
 
-    uint256 private currentPhase;
+    uint256 private tokenIdCounter = 1;
     mapping(uint256 => WhitelistPhase) private whitelistPhases;
+
+    uint256 private numPhases;
 
     // events
     event NewPhaseAdded(
@@ -27,15 +31,9 @@ contract NFTMinter is ERC721, Ownable {
         bool isWhiteListed
     );
 
-    constructor(uint256 startTime, uint256 endTime) ERC721("VishalD", "VD") {
-        require(startTime > block.timestamp, "Add suitable start time");
-        require(
-            endTime == 0 || endTime >= startTime,
-            "End time must be greater than or equal to start time"
-        );
+    event CurrentPhaseUpdated(uint indexed currentPhase);
 
-        addPhase(startTime, endTime);
-    }
+    constructor() ERC721("VishalD", "VD") {}
 
     // Modifiers
     modifier onlyWhitelisted() {
@@ -51,6 +49,18 @@ contract NFTMinter is ERC721, Ownable {
         _;
     }
 
+    // Chainlink Keeper functions
+    // function checkUpkeep(
+    //     bytes calldata /* checkData */
+    // ) external view override returns (bool, bytes memory) {
+    //     bool isPhaseUpdateNeeded = !isCurrentPhaseActive();
+    //     return (isPhaseUpdateNeeded, "0x0");
+    // }
+
+    // function performUpkeep(bytes calldata /* performData */) external override {
+    //     updateCurrentPhase();
+    // }
+
     // onyly owner can add new pahse
     function addPhase(uint256 startTime, uint256 endTime) public onlyOwner {
         require(startTime > block.timestamp, "Add suitable start time");
@@ -59,11 +69,11 @@ contract NFTMinter is ERC721, Ownable {
             "End time must be greater than or equal to start time"
         );
 
-        currentPhase++;
-        whitelistPhases[currentPhase].phaseStartTime = startTime;
-        whitelistPhases[currentPhase].phaseEndTime = endTime;
+        numPhases++;
+        whitelistPhases[numPhases].phaseStartTime = startTime;
+        whitelistPhases[numPhases].phaseEndTime = endTime;
 
-        emit NewPhaseAdded(currentPhase, startTime, endTime);
+        emit NewPhaseAdded(numPhases, startTime, endTime);
     }
 
     // adding whitelisted addresses for the specific phase
@@ -72,63 +82,69 @@ contract NFTMinter is ERC721, Ownable {
         uint256 phaseId,
         bool isWhitelisted
     ) external onlyOwner {
-        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        require(phaseId > 0 && phaseId <= numPhases, "Invalid phase ID");
         require(wallet != address(0), "Invalid wallet address");
 
         whitelistPhases[phaseId].whitelist[wallet] = isWhitelisted;
         emit UpdatedWhiteList(phaseId, wallet, isWhitelisted);
     }
 
-    // for te provided phase, check if the wallet is whitelisted or not
+    // for the provided phase, check if the wallet is whitelisted or not
     function isWhitelistedForPhase(
         address wallet,
         uint256 phaseId
     ) public view returns (bool) {
-        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        require(phaseId > 0 && phaseId <= numPhases, "Invalid phase ID");
         require(wallet != address(0), "Invalid wallet address");
 
         return whitelistPhases[phaseId].whitelist[wallet];
     }
 
-    // for the ongoing phase, check if the wallet whitelisted or not
+    // for the ongoing phase, check if the wallet is whitelisted or not
     function isWhitelistedForCurrentPhase(
         address wallet
     ) public view returns (bool) {
-        return isWhitelistedForPhase(wallet, currentPhase);
+        uint256 currentPhaseId = getCurrentPhaseId();
+        require(currentPhaseId > 0, "Current phase is 0");
+        return isWhitelistedForPhase(wallet, currentPhaseId);
     }
 
     // check if the ongoing phase is active or not
     function isCurrentPhaseActive() public view returns (bool) {
-        if (currentPhase == 0) {
-            return false;
-        }
+        uint256 currentPhaseId = getCurrentPhaseId();
 
-        WhitelistPhase storage phase = whitelistPhases[currentPhase];
-        if (block.timestamp >= phase.phaseStartTime) {
-            if (
-                phase.phaseEndTime == 0 || block.timestamp <= phase.phaseEndTime
-            ) {
-                return true;
-            }
+        require(currentPhaseId > 0, "Current phase is 0");
+
+        WhitelistPhase storage phase = whitelistPhases[currentPhaseId];
+        uint256 currentTimestamp = block.timestamp;
+
+        if (
+            currentTimestamp >= phase.phaseStartTime &&
+            (phase.phaseEndTime == 0 || currentTimestamp <= phase.phaseEndTime)
+        ) {
+            return true;
         }
 
         return false;
     }
 
-    // for the ongoing phase, whitelisted members can mint the nft
-    function mintNFT(
-        address to,
-        uint256 tokenId
-    ) external onlyWhitelisted phaseIsActive {
-        _safeMint(to, tokenId);
+    // for the ongoing phase, whitelisted members can mint the NFT
+    function mintNFT() external onlyWhitelisted phaseIsActive {
+        uint256 tokenId = tokenIdCounter;
+        tokenIdCounter++;
+        _safeMint(msg.sender, tokenId);
     }
 
     ///// getter functions
 
+    function getNumPhases() public view returns (uint256) {
+        return numPhases;
+    }
+
     function getWhitelistPhases(
         uint256 phaseId
     ) public view returns (uint256, uint256) {
-        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        require(phaseId > 0 && phaseId <= numPhases, "Invalid phase ID");
         WhitelistPhase storage phase = whitelistPhases[phaseId];
         return (phase.phaseStartTime, phase.phaseEndTime);
     }
@@ -137,11 +153,41 @@ contract NFTMinter is ERC721, Ownable {
         address wallet,
         uint256 phaseId
     ) external view returns (bool) {
-        require(phaseId > 0 && phaseId <= currentPhase, "Invalid phase ID");
+        require(phaseId > 0 && phaseId <= numPhases, "Invalid phase ID");
         return whitelistPhases[phaseId].whitelist[wallet];
     }
 
-    function getCurrentPhase() external view returns (uint256) {
-        return currentPhase;
+    function getCurrentPhaseId() public view returns (uint256) {
+        uint256 currentTimestamp = block.timestamp;
+
+        for (uint256 i = 1; i <= numPhases; i++) {
+            WhitelistPhase storage phase = whitelistPhases[i];
+
+            if (
+                currentTimestamp >= phase.phaseStartTime &&
+                currentTimestamp <= phase.phaseEndTime
+            ) {
+                return i;
+            }
+        }
+
+        return 0; // No active phase
     }
+
+    // // Internal function to update the current phase based on the timestamp
+    // function updateCurrentPhase() public {
+    //     uint256 currentTimestamp = block.timestamp;
+
+    //     for (uint256 i = 1; i <= currentPhase; i++) {
+    //         WhitelistPhase storage phase = whitelistPhases[i];
+    //         if (
+    //             currentTimestamp >= phase.phaseStartTime &&
+    //             (phase.phaseEndTime == 0 ||
+    //                 currentTimestamp <= phase.phaseEndTime)
+    //         ) {
+    //             currentPhase = i;
+    //             break;
+    //         }
+    //     }
+    // }
 }
